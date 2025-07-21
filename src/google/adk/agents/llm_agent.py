@@ -23,6 +23,7 @@ from typing import Awaitable
 from typing import Callable
 from typing import List
 from typing import Literal
+from typing import Mapping
 from typing import Optional
 from typing import Type
 from typing import Union
@@ -275,6 +276,26 @@ class LlmAgent(BaseAgent):
     When present, the returned dict will be used as tool result.
   """
   # Callbacks - End
+
+  @override
+  def _clone_callbacks(self, update: Mapping[str, Any] | None) -> None:
+    super()._clone_callbacks(update)
+    if (update is None or 'before_model_callback' not in update) and isinstance(
+        self.before_model_callback, list
+    ):
+      self.before_model_callback = self.before_model_callback.copy()
+    if (update is None or 'after_model_callback' not in update) and isinstance(
+        self.after_model_callback, list
+    ):
+      self.after_model_callback = self.after_model_callback.copy()
+    if (update is None or 'before_tool_callback' not in update) and isinstance(
+        self.before_tool_callback, list
+    ):
+      self.before_tool_callback = self.before_tool_callback.copy()
+    if (update is None or 'after_tool_callback' not in update) and isinstance(
+        self.after_tool_callback, list
+    ):
+      self.after_tool_callback = self.after_tool_callback.copy()
 
   @override
   async def _run_async_impl(

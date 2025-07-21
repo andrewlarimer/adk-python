@@ -254,6 +254,7 @@ def to_agent_engine(
     adk_app: str,
     staging_bucket: str,
     trace_to_cloud: bool,
+    absolufy_imports: bool = True,
     project: Optional[str] = None,
     region: Optional[str] = None,
     display_name: Optional[str] = None,
@@ -293,6 +294,8 @@ def to_agent_engine(
     region (str): Google Cloud region.
     staging_bucket (str): The GCS bucket for staging the deployment artifacts.
     trace_to_cloud (bool): Whether to enable Cloud Trace.
+    absolufy_imports (bool): Whether to absolufy imports. If True, all relative
+      imports will be converted to absolute import statements. Default is True.
     requirements_file (str): The filepath to the `requirements.txt` file to use.
       If not specified, the `requirements.txt` file in the `agent_folder` will
       be used.
@@ -382,6 +385,21 @@ def to_agent_engine(
       )
     click.echo(f'Created {os.path.join(temp_folder, adk_app_file)}')
     click.echo('Files and dependencies resolved')
+    if absolufy_imports:
+      for root, _, files in os.walk(temp_folder):
+        for file in files:
+          if file.endswith('.py'):
+            absolufy_imports_path = os.path.join(root, file)
+            try:
+              subprocess.run(
+                  ['absolufy-imports', absolufy_imports_path],
+                  check=True,
+              )
+            except subprocess.CalledProcessError as e:
+              click.echo(
+                  f'Failed to absolufy imports for {absolufy_imports_path}: {e}'
+              )
+      click.echo('Converted relative imports to absolute import statements.')
 
     click.echo('Deploying to agent engine...')
     agent_engine = agent_engines.ModuleAgent(

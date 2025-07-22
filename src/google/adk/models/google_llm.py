@@ -22,6 +22,7 @@ import os
 import sys
 from typing import AsyncGenerator
 from typing import cast
+from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -56,6 +57,23 @@ class Gemini(BaseLlm):
   """
 
   model: str = 'gemini-1.5-flash'
+
+  retry_options: Optional[types.HttpRetryOptions] = None
+  """Allow Gemini to retry failed responses.
+
+  Sample:
+  ```python
+  from google.genai import types
+
+  # ...
+
+  agent = Agent(
+    model=Gemini(
+      retry_options=types.HttpRetryOptions(initial_delay=1, attempts=2),
+    )
+  )
+  ```
+  """
 
   @staticmethod
   @override
@@ -190,9 +208,20 @@ class Gemini(BaseLlm):
     Returns:
       The api client.
     """
-    return Client(
-        http_options=types.HttpOptions(headers=self._tracking_headers)
-    )
+    http_options = types.HttpOptions(headers=self._tracking_headers)
+    # retry_options in Gemini SDK was introduced at Jun. 18, 2025. Adding a
+    # backward compatibility check here.
+    if hasattr(http_options, 'retry_options'):
+      http_options.retry_options = self.retry_options
+    elif not hasattr(http_options, 'retry_options') and self.retry_options:
+      raise ValueError(
+          f'retry_options {self.retry_options} is configured for Gemini model.'
+          ' However, it is not yet supported by google.genai library. Please'
+          ' consider updating google.genai library, or remove retry_options'
+          ' from model options.'
+      )
+
+    return Client(http_options=http_options)
 
   @cached_property
   def _api_backend(self) -> GoogleLLMVariant:
